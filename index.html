@@ -952,8 +952,21 @@ async function deleteHistoryEntry(index) {
   // Remove the entry
   state.history.splice(index, 1);
 
-  // Only recalculate lastDoneKm for real service entries, not odometer updates
-  if (entry.id !== 'odometer_update') {
+  if (entry.id === 'odometer_update') {
+    // Roll currentKm back to the most recent remaining odometer update,
+    // or to the highest km found in any history entry, or the default
+    const remainingOdo = state.history
+      .filter(h => h.id === 'odometer_update')
+      .map(h => h.km);
+    if (remainingOdo.length > 0) {
+      state.currentKm = Math.max(...remainingOdo);
+    } else {
+      // No odometer updates left — fall back to highest km in any history entry
+      const allKms = state.history.map(h => h.km);
+      state.currentKm = allKms.length > 0 ? Math.max(...allKms) : 112050;
+    }
+  } else {
+    // Recalculate lastDoneKm for this service item from remaining history
     const remaining = state.history.filter(h => h.id === entry.id);
     if (remaining.length > 0) {
       state.lastDoneKm[entry.id] = Math.max(...remaining.map(h => h.km));
