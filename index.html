@@ -66,13 +66,16 @@
   .header {
     background: var(--surface);
     border-bottom: 1px solid var(--border);
-    padding: 16px 20px;
+    padding: 14px 20px 0;
     position: sticky;
     top: 0;
     z-index: 100;
+  }
+  .header-top {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    margin-bottom: 14px;
   }
   .header-left { display: flex; flex-direction: column; gap: 2px; }
   .header-car {
@@ -83,45 +86,43 @@
     text-transform: uppercase;
   }
   .header-title { font-size: 17px; font-weight: 600; color: var(--text); }
-  .header-km {
-    font-family: var(--mono);
-    font-size: 13px;
-    color: var(--text2);
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-  .km-dot {
-    width: 6px; height: 6px;
-    border-radius: 50%;
-    background: var(--ok);
-    display: inline-block;
-  }
 
-  /* KM UPDATE PANEL */
-  .km-panel {
+  /* BIG ODOMETER DISPLAY */
+  .odo-bar {
     background: var(--surface2);
-    border-bottom: 1px solid var(--border);
-    padding: 14px 20px;
+    border-top: 1px solid var(--border);
+    padding: 10px 20px;
     display: flex;
     align-items: center;
-    gap: 10px;
+    justify-content: space-between;
+    gap: 12px;
   }
-  .km-label { font-size: 12px; color: var(--text2); font-family: var(--mono); white-space: nowrap; }
-  .km-input {
-    flex: 1;
+  .odo-left { display: flex; flex-direction: column; gap: 1px; }
+  .odo-label { font-family: var(--mono); font-size: 10px; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; }
+  .odo-value {
+    font-family: var(--mono);
+    font-size: 26px;
+    font-weight: 500;
+    color: var(--text);
+    letter-spacing: 0.04em;
+    line-height: 1;
+  }
+  .odo-value span { font-size: 13px; color: var(--text2); margin-left: 3px; }
+  .odo-right { display: flex; align-items: center; gap: 8px; }
+  .odo-input {
     background: var(--bg);
     border: 1px solid var(--border);
     border-radius: 8px;
     color: var(--text);
     font-family: var(--mono);
-    font-size: 15px;
-    padding: 8px 12px;
+    font-size: 14px;
+    padding: 7px 10px;
     outline: none;
+    width: 110px;
     -webkit-appearance: none;
   }
-  .km-input:focus { border-color: var(--accent); }
-  .km-btn {
+  .odo-input:focus { border-color: var(--accent); }
+  .odo-btn {
     background: var(--accent);
     color: #fff;
     border: none;
@@ -129,11 +130,11 @@
     font-family: var(--sans);
     font-size: 13px;
     font-weight: 600;
-    padding: 8px 16px;
+    padding: 7px 14px;
     cursor: pointer;
     white-space: nowrap;
   }
-  .km-btn:active { opacity: 0.85; }
+  .odo-btn:active { opacity: 0.85; }
 
   /* TABS */
   .tabs {
@@ -456,20 +457,22 @@
 
 <!-- HEADER -->
 <div class="header">
-  <div class="header-left">
-    <span class="header-car">2016 Subaru Outback</span>
-    <span class="header-title">Maintenance Tracker</span>
+  <div class="header-top">
+    <div class="header-left">
+      <span class="header-car">2016 Subaru Outback</span>
+      <span class="header-title">Maintenance Tracker</span>
+    </div>
   </div>
-  <div class="header-km">
-    <span class="km-dot"></span>
-    <span id="headerKm">—</span>
+  <div class="odo-bar">
+    <div class="odo-left">
+      <div class="odo-label">Current Odometer</div>
+      <div class="odo-value" id="headerKm">—<span>km</span></div>
+    </div>
+    <div class="odo-right">
+      <input class="odo-input" type="number" id="kmInput" placeholder="New km" inputmode="numeric">
+      <button class="odo-btn" id="btn-save-km">Update</button>
+    </div>
   </div>
-</div>
-
-<div class="km-panel">
-  <span class="km-label">Update km →</span>
-  <input class="km-input" type="number" id="kmInput" placeholder="e.g. 115000" inputmode="numeric">
-  <button class="km-btn" id="btn-save-km">Save</button>
 </div>
 
 <div class="tabs">
@@ -777,7 +780,8 @@ function renderAll() {
   document.getElementById('cnt-overdue').textContent = overdue;
   document.getElementById('cnt-soon').textContent    = soon;
   document.getElementById('cnt-ok').textContent      = ok;
-  document.getElementById('headerKm').textContent    = fmtKm(state.currentKm);
+  // Show just the number — the <span>km</span> is already in the HTML
+  document.getElementById('headerKm').innerHTML = Number(state.currentKm).toLocaleString('en-CA') + '<span>km</span>';
 
   const urgentItems = ITEMS.filter(i => getStatus(i) === 'danger');
   document.getElementById('list-urgent').innerHTML = urgentItems.length
@@ -859,6 +863,13 @@ async function updateKm() {
   if (!val || val < state.currentKm) { showToast('Enter a valid odometer reading ↑'); return; }
   snapshot();
   state.currentKm = val;
+  state.history.push({
+    id: 'odometer_update',
+    name: 'Odometer Update',
+    km: val,
+    date: new Date().toISOString(),
+    notes: `Odometer set to ${fmtKm(val)}`
+  });
   document.getElementById('kmInput').value = '';
   await saveState();
   renderAll();
@@ -941,14 +952,14 @@ async function deleteHistoryEntry(index) {
   // Remove the entry
   state.history.splice(index, 1);
 
-  // Recalculate lastDoneKm for this item from remaining history
-  const remaining = state.history.filter(h => h.id === entry.id);
-  if (remaining.length > 0) {
-    // Set to the most recent remaining log
-    state.lastDoneKm[entry.id] = Math.max(...remaining.map(h => h.km));
-  } else {
-    // No more history for this item — remove lastDoneKm entirely
-    delete state.lastDoneKm[entry.id];
+  // Only recalculate lastDoneKm for real service entries, not odometer updates
+  if (entry.id !== 'odometer_update') {
+    const remaining = state.history.filter(h => h.id === entry.id);
+    if (remaining.length > 0) {
+      state.lastDoneKm[entry.id] = Math.max(...remaining.map(h => h.km));
+    } else {
+      delete state.lastDoneKm[entry.id];
+    }
   }
 
   await saveState();
