@@ -1,0 +1,978 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Outback Maintenance</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Outback">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='112' fill='%230f1117'/%3E%3Crect width='512' height='512' rx='112' fill='url(%23grad)'/%3E%3Cdefs%3E%3ClinearGradient id='grad' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0%25' stop-color='%23181c27'/%3E%3Cstop offset='100%25' stop-color='%230f1117'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cellipse cx='256' cy='310' rx='165' ry='58' fill='%234f8ef7' opacity='0.13'/%3E%3Crect x='100' y='230' width='312' height='110' rx='30' fill='%234f8ef7'/%3E%3Crect x='130' y='175' width='240' height='95' rx='24' fill='%234f8ef7'/%3E%3Crect x='148' y='190' width='95' height='68' rx='10' fill='%230f1117' opacity='0.55'/%3E%3Crect x='262' y='190' width='95' height='68' rx='10' fill='%230f1117' opacity='0.55'/%3E%3Ccircle cx='163' cy='342' r='36' fill='%230f1117'/%3E%3Ccircle cx='163' cy='342' r='22' fill='%23181c27'/%3E%3Ccircle cx='163' cy='342' r='9' fill='%234f8ef7'/%3E%3Ccircle cx='349' cy='342' r='36' fill='%230f1117'/%3E%3Ccircle cx='349' cy='342' r='22' fill='%23181c27'/%3E%3Ccircle cx='349' cy='342' r='9' fill='%234f8ef7'/%3E%3Crect x='84' y='270' width='28' height='38' rx='8' fill='%233ecf8e'/%3E%3Crect x='400' y='270' width='28' height='38' rx='8' fill='%233ecf8e'/%3E%3Crect x='100' y='318' width='60' height='16' rx='8' fill='%230f1117' opacity='0.3'/%3E%3Crect x='352' y='318' width='60' height='16' rx='8' fill='%230f1117' opacity='0.3'/%3E%3C/svg%3E">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap');
+
+  :root {
+    --bg: #0f1117;
+    --surface: #181c27;
+    --surface2: #1f2435;
+    --border: #2a2f45;
+    --accent: #4f8ef7;
+    --accent-dim: rgba(79,142,247,0.12);
+    --warn: #f5a623;
+    --warn-dim: rgba(245,166,35,0.12);
+    --danger: #e8504a;
+    --danger-dim: rgba(232,80,74,0.12);
+    --ok: #3ecf8e;
+    --ok-dim: rgba(62,207,142,0.10);
+    --muted: #4a5170;
+    --text: #e8ecf8;
+    --text2: #8a92b2;
+    --mono: 'DM Mono', monospace;
+    --sans: 'DM Sans', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 15px;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* LOADING SCREEN */
+  #loading-screen {
+    position: fixed; inset: 0;
+    background: var(--bg);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 16px;
+    z-index: 999;
+  }
+  #loading-screen.hidden { display: none; }
+  .loading-spinner {
+    width: 36px; height: 36px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.75s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text { font-family: var(--mono); font-size: 12px; color: var(--text2); }
+
+  /* HEADER */
+  .header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 20px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .header-left { display: flex; flex-direction: column; gap: 2px; }
+  .header-car {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+  .header-title { font-size: 17px; font-weight: 600; color: var(--text); }
+  .header-km {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--text2);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .km-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--ok);
+    display: inline-block;
+  }
+
+  /* KM UPDATE PANEL */
+  .km-panel {
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .km-label { font-size: 12px; color: var(--text2); font-family: var(--mono); white-space: nowrap; }
+  .km-input {
+    flex: 1;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 15px;
+    padding: 8px 12px;
+    outline: none;
+    -webkit-appearance: none;
+  }
+  .km-input:focus { border-color: var(--accent); }
+  .km-btn {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 600;
+    padding: 8px 16px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .km-btn:active { opacity: 0.85; }
+
+  /* TABS */
+  .tabs {
+    display: flex;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab {
+    flex-shrink: 0;
+    padding: 12px 18px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text2);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: color 0.15s, border-color 0.15s;
+    white-space: nowrap;
+  }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  /* MAIN */
+  .main { padding: 16px 16px 100px; max-width: 600px; margin: 0 auto; }
+
+  /* SUMMARY CARDS */
+  .summary-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+  .summary-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px;
+    text-align: center;
+  }
+  .summary-num { font-family: var(--mono); font-size: 22px; font-weight: 500; line-height: 1; margin-bottom: 4px; }
+  .summary-lbl { font-size: 11px; color: var(--text2); }
+  .num-danger { color: var(--danger); }
+  .num-warn { color: var(--warn); }
+  .num-ok { color: var(--ok); }
+
+  /* SECTION LABEL */
+  .section-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 20px 0 8px;
+  }
+
+  /* ITEM CARD */
+  .item-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .item-card.status-danger { border-left: 3px solid var(--danger); }
+  .item-card.status-warn   { border-left: 3px solid var(--warn); }
+  .item-card.status-ok     { border-left: 3px solid var(--ok); }
+  .item-card.status-done   { border-left: 3px solid var(--muted); opacity: 0.7; }
+
+  .item-icon {
+    width: 36px; height: 36px;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .icon-danger { background: var(--danger-dim); }
+  .icon-warn   { background: var(--warn-dim); }
+  .icon-ok     { background: var(--ok-dim); }
+  .icon-done   { background: rgba(74,81,112,0.18); }
+
+  .item-body { flex: 1; min-width: 0; }
+  .item-name { font-size: 14px; font-weight: 500; margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .item-meta { font-family: var(--mono); font-size: 11px; color: var(--text2); margin-bottom: 6px; }
+  .item-bar-wrap { background: var(--border); border-radius: 3px; height: 4px; width: 100%; overflow: hidden; }
+  .item-bar { height: 100%; border-radius: 3px; transition: width 0.4s ease; }
+  .bar-danger { background: var(--danger); }
+  .bar-warn   { background: var(--warn); }
+  .bar-ok     { background: var(--ok); }
+  .bar-done   { background: var(--muted); }
+
+  .item-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+  .item-badge {
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 500;
+    padding: 3px 8px;
+    border-radius: 20px;
+    letter-spacing: 0.05em;
+  }
+  .badge-danger { background: var(--danger-dim); color: var(--danger); }
+  .badge-warn   { background: var(--warn-dim);   color: var(--warn); }
+  .badge-ok     { background: var(--ok-dim);     color: var(--ok); }
+  .badge-done   { background: rgba(74,81,112,0.2); color: var(--muted); }
+
+  .log-btn {
+    font-size: 11px;
+    color: var(--accent);
+    background: var(--accent-dim);
+    border: none;
+    border-radius: 6px;
+    padding: 4px 10px;
+    cursor: pointer;
+    font-family: var(--sans);
+    font-weight: 500;
+  }
+  .log-btn:active { opacity: 0.75; }
+
+  .override-btn {
+    font-size: 10px;
+    color: var(--text2);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 3px 8px;
+    cursor: pointer;
+    font-family: var(--sans);
+    font-weight: 500;
+  }
+  .override-btn:active { opacity: 0.75; }
+
+  /* HISTORY TAB */
+  .history-entry {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .hist-name  { font-size: 13px; font-weight: 500; margin-bottom: 2px; }
+  .hist-meta  { font-family: var(--mono); font-size: 11px; color: var(--text2); }
+  .hist-km    { font-family: var(--mono); font-size: 13px; color: var(--ok); text-align: right; }
+  .hist-date  { font-size: 11px; color: var(--text2); text-align: right; margin-top: 2px; }
+
+  /* EMPTY */
+  .empty { text-align: center; padding: 40px 20px; color: var(--muted); font-size: 13px; }
+
+  /* MODAL */
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 200;
+    display: flex; align-items: flex-end; justify-content: center;
+  }
+  .modal-overlay.hidden { display: none; }
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px 20px 0 0;
+    padding: 24px 20px 40px;
+    width: 100%;
+    max-width: 600px;
+  }
+  .modal-title { font-size: 17px; font-weight: 600; margin-bottom: 4px; }
+  .modal-sub   { font-size: 13px; color: var(--text2); margin-bottom: 20px; }
+  .modal-field { margin-bottom: 14px; }
+  .modal-field label { font-size: 12px; color: var(--text2); display: block; margin-bottom: 6px; font-family: var(--mono); }
+  .modal-input {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font-size: 15px;
+    padding: 10px 14px;
+    outline: none;
+    font-family: var(--sans);
+    -webkit-appearance: none;
+  }
+  .modal-input:focus { border-color: var(--accent); }
+  .modal-actions { display: flex; gap: 10px; margin-top: 18px; }
+  .btn-primary {
+    flex: 1;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 600;
+    padding: 13px;
+    cursor: pointer;
+  }
+  .btn-cancel {
+    background: var(--surface2);
+    color: var(--text2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font-size: 15px;
+    padding: 13px 20px;
+    cursor: pointer;
+  }
+
+  /* OVERRIDE INFO BOX */
+  .override-info {
+    font-size: 12px;
+    color: var(--text2);
+    background: var(--surface2);
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 14px;
+    line-height: 1.5;
+  }
+
+  /* TOAST */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(120px);
+    background: var(--ok);
+    color: #0f1117;
+    font-weight: 600;
+    font-size: 13px;
+    padding: 10px 16px;
+    border-radius: 20px;
+    transition: transform 0.3s ease;
+    z-index: 300;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+  #toast-undo-btn {
+    background: rgba(0,0,0,0.15);
+    border: none;
+    border-radius: 10px;
+    color: #0f1117;
+    font-weight: 700;
+    font-size: 12px;
+    padding: 3px 10px;
+    cursor: pointer;
+    font-family: var(--sans);
+    display: none;
+  }
+  #toast-undo-btn:active { opacity: 0.7; }
+
+  /* NEXT UP SECTION */
+  .nextup-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px;
+    margin-bottom: 10px;
+  }
+  .nextup-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .nextup-icon {
+    width: 38px; height: 38px;
+    border-radius: 9px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 19px;
+    flex-shrink: 0;
+    background: var(--accent-dim);
+  }
+  .nextup-title  { font-size: 14px; font-weight: 600; }
+  .nextup-km     { font-family: var(--mono); font-size: 11px; color: var(--accent); margin-top: 1px; }
+  .nextup-note   { font-size: 12px; color: var(--text2); margin-bottom: 12px; line-height: 1.5; }
+  .nextup-links  { display: flex; flex-wrap: wrap; gap: 7px; }
+  .nextup-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    font-weight: 500;
+    padding: 5px 11px;
+    border-radius: 20px;
+    text-decoration: none;
+    border: 1px solid var(--border);
+    color: var(--text);
+    background: var(--surface2);
+  }
+  .nextup-link:active { opacity: 0.75; }
+  .nextup-link.yt   { border-color: rgba(255,70,70,0.35);   color: #ff6b6b; }
+  .nextup-link.shop { border-color: rgba(79,142,247,0.35);  color: var(--accent); }
+</style>
+</head>
+<body>
+
+<!-- LOADING SCREEN -->
+<div id="loading-screen">
+  <div class="loading-spinner"></div>
+  <div class="loading-text">Connecting to cloud...</div>
+</div>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-left">
+    <span class="header-car">2016 Subaru Outback</span>
+    <span class="header-title">Maintenance Tracker</span>
+  </div>
+  <div class="header-km">
+    <span class="km-dot"></span>
+    <span id="headerKm">—</span>
+  </div>
+</div>
+
+<div class="km-panel">
+  <span class="km-label">Update km →</span>
+  <input class="km-input" type="number" id="kmInput" placeholder="e.g. 115000" inputmode="numeric">
+  <button class="km-btn" id="btn-save-km">Save</button>
+</div>
+
+<div class="tabs">
+  <div class="tab active" data-tab="dashboard">Dashboard</div>
+  <div class="tab" data-tab="all">All Items</div>
+  <div class="tab" data-tab="history">History</div>
+</div>
+
+<div class="main">
+  <!-- DASHBOARD TAB -->
+  <div id="tab-dashboard">
+    <div class="summary-row">
+      <div class="summary-card">
+        <div class="summary-num num-danger" id="cnt-overdue">0</div>
+        <div class="summary-lbl">Overdue</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-num num-warn" id="cnt-soon">0</div>
+        <div class="summary-lbl">Due Soon</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-num num-ok" id="cnt-ok">0</div>
+        <div class="summary-lbl">Good</div>
+      </div>
+    </div>
+    <div class="section-label">Needs Attention</div>
+    <div id="list-urgent"></div>
+    <div class="section-label">Coming Up (within 3,000 km)</div>
+    <div id="list-soon"></div>
+    <div class="section-label">Next Up · DIY Guide</div>
+    <div id="list-nextup"></div>
+  </div>
+
+  <!-- ALL ITEMS TAB -->
+  <div id="tab-all" style="display:none">
+    <div id="list-all"></div>
+  </div>
+
+  <!-- HISTORY TAB -->
+  <div id="tab-history" style="display:none">
+    <div class="section-label">Service Log</div>
+    <div id="list-history"></div>
+  </div>
+</div>
+
+<!-- LOG SERVICE MODAL -->
+<div class="modal-overlay hidden" id="modal">
+  <div class="modal">
+    <div class="modal-title" id="modal-title">Log Service</div>
+    <div class="modal-sub"   id="modal-sub">Record when this was done</div>
+    <div class="modal-field">
+      <label>Odometer at service (km)</label>
+      <input class="modal-input" type="number" id="modal-km" inputmode="numeric" placeholder="e.g. 112050">
+    </div>
+    <div class="modal-field">
+      <label>Notes (optional)</label>
+      <input class="modal-input" type="text" id="modal-notes" placeholder="e.g. Jiffy Lube, synthetic 0W-20">
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" id="btn-modal-cancel">Cancel</button>
+      <button class="btn-primary" id="btn-modal-confirm">Log Service</button>
+    </div>
+  </div>
+</div>
+
+<!-- SET NEXT KM MODAL -->
+<div class="modal-overlay hidden" id="override-modal">
+  <div class="modal">
+    <div class="modal-title" id="override-title">Set Next Due Km</div>
+    <div class="override-info" id="override-info"></div>
+    <div class="modal-field">
+      <label>Next due at (km)</label>
+      <input class="modal-input" type="number" id="override-km" inputmode="numeric" placeholder="e.g. 118000">
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" id="btn-override-cancel">Cancel</button>
+      <button class="btn-primary" id="btn-override-confirm">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"><span id="toast-msg"></span><button id="toast-undo-btn">Undo</button></div>
+
+<script type="module">
+import { initializeApp }                        from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import { getFirestore, doc, getDoc, setDoc }    from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+// ─── FIREBASE ────────────────────────────────────────────
+const app = initializeApp({
+  apiKey:            "AIzaSyDAmIxt3p9qXMI7uMSncAEU5eSsfbL61r4",
+  authDomain:        "subaru-tracker-c7f24.firebaseapp.com",
+  projectId:         "subaru-tracker-c7f24",
+  storageBucket:     "subaru-tracker-c7f24.firebasestorage.app",
+  messagingSenderId: "1078932458596",
+  appId:             "1:1078932458596:web:653810a8013077f3542371"
+});
+const db       = getFirestore(app);
+const STATE_DOC = doc(db, 'tracker', 'state');
+
+// ─── STATE ───────────────────────────────────────────────
+function defaultState() {
+  return {
+    currentKm: 112050,
+    history: [
+      { id:'ontario_safety', name:'Ontario Safety Inspection',          km:112050, date:new Date().toISOString(), notes:'Required by Ontario law at purchase' },
+      { id:'seat_leather',   name:'Seat Knob & Leather Change',         km:112050, date:new Date().toISOString(), notes:'Done at purchase' },
+      { id:'brake_noise',    name:'Brake Rotor Noise Reduction',        km:112050, date:new Date().toISOString(), notes:'Done at purchase' },
+      { id:'tire_balance',   name:'Tire Balancing & Wiper Fluid Top Up',km:112050, date:new Date().toISOString(), notes:'Done at purchase' },
+    ],
+    lastDoneKm:     { ontario_safety:112050, tire_balance:112050, brake_noise:112050 },
+    overrideNextKm: {}
+  };
+}
+
+let state = defaultState();
+
+async function loadState() {
+  try {
+    const snap = await getDoc(STATE_DOC);
+    if (snap.exists()) {
+      const d = snap.data();
+      state = {
+        currentKm:      d.currentKm      ?? state.currentKm,
+        history:        d.history        ? JSON.parse(d.history) : state.history,
+        lastDoneKm:     d.lastDoneKm     ?? state.lastDoneKm,
+        overrideNextKm: d.overrideNextKm ?? state.overrideNextKm,
+      };
+    } else {
+      await saveState(); // first run — persist defaults
+    }
+  } catch(e) {
+    console.warn('Firestore load failed, using defaults', e);
+  }
+}
+
+async function saveState() {
+  try {
+    await setDoc(STATE_DOC, {
+      currentKm:      state.currentKm,
+      history:        JSON.stringify(state.history),
+      lastDoneKm:     state.lastDoneKm,
+      overrideNextKm: state.overrideNextKm,
+    });
+  } catch(e) {
+    console.warn('Firestore save failed', e);
+  }
+}
+
+// ─── UNDO STACK ──────────────────────────────────────────
+let undoSnapshot = null; // stores one level of undo
+
+function snapshot() {
+  undoSnapshot = JSON.stringify(state);
+}
+
+async function undoLast() {
+  if (!undoSnapshot) return;
+  state = JSON.parse(undoSnapshot);
+  undoSnapshot = null;
+  await saveState();
+  renderAll();
+  showToast('Undone ✓', false);
+}
+const ITEMS = [
+  // ENGINE
+  { id:'oil_change',       name:'Oil Change',              icon:'🛢️', interval:8000,  warnAt:1000, category:'Engine',        note:'0W-20 full synthetic — Subaru spec' },
+  { id:'cabin_filter',     name:'Cabin Air Filter',        icon:'🌬️', interval:20000, warnAt:3000, category:'Engine',        note:'Replace more often in dusty conditions' },
+  { id:'air_filter',       name:'Engine Air Filter',       icon:'💨', interval:30000, warnAt:4000, category:'Engine',        note:'Check annually, replace every 30k' },
+  { id:'spark_plugs',      name:'Spark Plugs',             icon:'⚡', interval:60000, warnAt:8000, category:'Engine',        note:'NGK Iridium — do not use copper' },
+  { id:'pcv_valve',        name:'PCV Valve',               icon:'🔧', interval:60000, warnAt:8000, category:'Engine',        note:'Part of emissions system' },
+
+  // TRANSMISSION
+  { id:'cvt_fluid',        name:'CVT Transmission Fluid',  icon:'⚙️', interval:40000, warnAt:5000, category:'Transmission',  note:'Critical — use Subaru CVTF-II only. Failure is expensive.' },
+  { id:'diff_front',       name:'Front Differential Fluid',icon:'🔩', interval:40000, warnAt:5000, category:'Transmission',  note:'Part of the AWD system' },
+  { id:'diff_rear',        name:'Rear Differential Fluid', icon:'🔩', interval:40000, warnAt:5000, category:'Transmission',  note:'Subaru Gear Oil GL-5' },
+
+  // BRAKES
+  { id:'brake_fluid',      name:'Brake Fluid',             icon:'🛑', interval:40000, warnAt:5000, category:'Brakes',        note:'DOT 3 — flush every 2 years or 40k' },
+  { id:'brake_pads',       name:'Brake Pads Inspection',   icon:'🛑', interval:20000, warnAt:3000, category:'Brakes',        note:'Inspect — replace when <3mm' },
+  { id:'brake_rotors',     name:'Brake Rotors Inspection', icon:'⭕', interval:40000, warnAt:5000, category:'Brakes',        note:'Already had noise reduction done' },
+
+  // TIRES
+  { id:'tire_rotation',    name:'Tire Rotation',           icon:'🔄', interval:10000, warnAt:1500, category:'Tires',         note:'Critical for AWD — all 4 tires must wear evenly' },
+  { id:'tire_balance',     name:'Tire Balance',            icon:'⚖️', interval:20000, warnAt:2000, category:'Tires',         note:'Done at purchase' },
+  { id:'tire_alignment',   name:'Wheel Alignment',         icon:'📐', interval:40000, warnAt:5000, category:'Tires',         note:'Check if pulling to one side' },
+  { id:'tire_pressure',    name:'Tire Pressure Check',     icon:'💨', interval:5000,  warnAt:500,  category:'Tires',         note:'Especially important in Ontario winters' },
+
+  // COOLING
+  { id:'coolant',          name:'Coolant Flush',           icon:'🌡️', interval:80000, warnAt:8000, category:'Cooling',       note:'Subaru Super Coolant (blue)' },
+  { id:'thermostat',       name:'Thermostat Inspection',   icon:'🌡️', interval:80000, warnAt:8000, category:'Cooling',       note:'Check with coolant service' },
+
+  // BELTS
+  { id:'serpentine_belt',  name:'Serpentine Belt',         icon:'〰️', interval:100000,warnAt:10000,category:'Belts',         note:'Inspect at 100k, replace as needed. No timing belt — chain.' },
+  { id:'accessory_belt',   name:'Accessory Drive Belt',    icon:'〰️', interval:80000, warnAt:8000, category:'Belts',         note:'A/C compressor & alternator' },
+
+  // FUEL
+  { id:'fuel_filter',      name:'Fuel Filter',             icon:'⛽', interval:80000, warnAt:8000, category:'Fuel',          note:'Integrated in fuel pump — inspect at 80k' },
+
+  // ELECTRICAL
+  { id:'battery',          name:'Battery Load Test',       icon:'🔋', interval:50000, warnAt:5000, category:'Electrical',    note:'2016 Outback batteries avg 4-5 years. ~130k km = test it.' },
+
+  // SUSPENSION
+  { id:'shocks_struts',    name:'Shocks & Struts',         icon:'🚗', interval:80000, warnAt:8000, category:'Suspension',    note:'Check for bounce, leaks, uneven wear' },
+  { id:'bushings',         name:'Suspension Bushings',     icon:'🔧', interval:80000, warnAt:8000, category:'Suspension',    note:'Listen for clunks on rough roads' },
+
+  // VISIBILITY
+  { id:'wiper_blades',     name:'Wiper Blades',            icon:'🌧️', interval:15000, warnAt:2000, category:'Visibility',    note:'Replace before winter in Ontario' },
+  { id:'headlights',       name:'Headlight Check',         icon:'💡', interval:20000, warnAt:2000, category:'Visibility',    note:'Check alignment & bulb condition' },
+
+  // SUBARU-SPECIFIC
+  { id:'eyesight_calibration', name:'EyeSight Calibration',icon:'👁️', interval:0,     warnAt:0,    category:'Subaru-Specific',note:'Only if windshield replaced or collision — dealer only' },
+  { id:'head_gasket_check',name:'Head Gasket Inspection',  icon:'🔍', interval:30000, warnAt:5000, category:'Subaru-Specific',note:'Known Subaru concern — check for oil/coolant seepage' },
+];
+
+// ─── DIY INFO ────────────────────────────────────────────
+const DIY_INFO = {
+  oil_change:       { diy:true,  parts:[{label:'Amazon – 0W-20 Synthetic Oil',          url:'https://www.amazon.ca/s?k=0W-20+full+synthetic+oil+subaru'},{label:'Amazon – Oil Filter (Subaru)',      url:'https://www.amazon.ca/s?k=subaru+outback+2016+oil+filter'},{label:'Canadian Tire – Oil & Filter',    url:'https://www.canadiantire.ca/en/search.html#q=0W-20+oil+filter&lang=en'}], youtube:{label:'How to Change Oil – 2016 Subaru Outback',    url:'https://www.youtube.com/results?search_query=2016+subaru+outback+oil+change+DIY'} },
+  tire_rotation:    { diy:true,  parts:[{label:'Amazon – Torque Wrench',                url:'https://www.amazon.ca/s?k=torque+wrench'},{label:'Amazon – Car Jack Stands',            url:'https://www.amazon.ca/s?k=jack+stands'}], youtube:{label:'How to Rotate Tires – AWD Subaru',           url:'https://www.youtube.com/results?search_query=subaru+outback+AWD+tire+rotation+DIY'} },
+  cabin_filter:     { diy:true,  parts:[{label:'Amazon – Cabin Air Filter (2016 Outback)',url:'https://www.amazon.ca/s?k=2016+subaru+outback+cabin+air+filter'},{label:'Canadian Tire – Cabin Filter', url:'https://www.canadiantire.ca/en/search.html#q=cabin+air+filter+subaru+outback&lang=en'}], youtube:{label:'Replace Cabin Filter – Subaru Outback',       url:'https://www.youtube.com/results?search_query=2016+subaru+outback+cabin+filter+replacement'} },
+  air_filter:       { diy:true,  parts:[{label:'Amazon – Engine Air Filter (2016 Outback)',url:'https://www.amazon.ca/s?k=2016+subaru+outback+engine+air+filter'},{label:'Canadian Tire – Air Filter',url:'https://www.canadiantire.ca/en/search.html#q=engine+air+filter+subaru&lang=en'}], youtube:{label:'Engine Air Filter DIY – Subaru Outback',     url:'https://www.youtube.com/results?search_query=2016+subaru+outback+engine+air+filter+replacement'} },
+  brake_pads:       { diy:false, parts:[{label:'Amazon – Brake Pads (Outback 2016)',     url:'https://www.amazon.ca/s?k=2016+subaru+outback+brake+pads'},{label:'Canadian Tire – Brake Pads',    url:'https://www.canadiantire.ca/en/search.html#q=subaru+outback+brake+pads&lang=en'}], youtube:{label:'Brake Pad Replacement – Subaru Outback',      url:'https://www.youtube.com/results?search_query=2016+subaru+outback+brake+pad+replacement'} },
+  wiper_blades:     { diy:true,  parts:[{label:'Amazon – Wiper Blades (2016 Outback)',   url:'https://www.amazon.ca/s?k=2016+subaru+outback+wiper+blades'},{label:'Canadian Tire – Wipers',        url:'https://www.canadiantire.ca/en/search.html#q=subaru+outback+wiper+blades&lang=en'}], youtube:{label:'Change Wiper Blades – Subaru Outback',        url:'https://www.youtube.com/results?search_query=subaru+outback+wiper+blade+replacement'} },
+  cvt_fluid:        { diy:false, parts:[{label:'Amazon – Subaru CVTF-II Fluid',          url:'https://www.amazon.ca/s?k=subaru+CVTF-II+transmission+fluid'}], youtube:{label:'CVT Fluid Change – Subaru Outback',              url:'https://www.youtube.com/results?search_query=subaru+outback+CVT+fluid+change'} },
+  tire_pressure:    { diy:true,  parts:[{label:'Amazon – Digital Tire Gauge',            url:'https://www.amazon.ca/s?k=digital+tire+pressure+gauge'},{label:'Amazon – Portable Air Compressor',   url:'https://www.amazon.ca/s?k=portable+car+air+compressor'}], youtube:{label:'Check & Inflate Tires Properly',                url:'https://www.youtube.com/results?search_query=how+to+check+tire+pressure+properly'} },
+  spark_plugs:      { diy:true,  parts:[{label:'Amazon – NGK Iridium Plugs (2016 Outback)',url:'https://www.amazon.ca/s?k=NGK+iridium+spark+plugs+2016+subaru+outback'}], youtube:{label:'Spark Plug Replacement – 2016 Subaru Outback',  url:'https://www.youtube.com/results?search_query=2016+subaru+outback+2.5+spark+plug+replacement'} },
+  head_gasket_check:{ diy:false, parts:[{label:'Amazon – Subaru Head Gasket Conditioner',url:'https://www.amazon.ca/s?k=subaru+head+gasket+conditioner'}], youtube:{label:'Head Gasket Check – What to Look For (Subaru)',   url:'https://www.youtube.com/results?search_query=subaru+head+gasket+inspection+signs'} },
+};
+
+// ─── HELPERS ─────────────────────────────────────────────
+const fmtKm   = n   => Number(n).toLocaleString('en-CA') + ' km';
+const fmtDate = iso => new Date(iso).toLocaleDateString('en-CA', { year:'numeric', month:'short', day:'numeric' });
+
+function getLastDoneKm(item) { return state.lastDoneKm[item.id] ?? null; }
+
+function getNextDueKm(item) {
+  if (item.interval === 0) return null;
+  if (state.overrideNextKm?.[item.id] != null) return state.overrideNextKm[item.id];
+  const last = getLastDoneKm(item);
+  if (last != null) return last + item.interval;
+  const offset = state.currentKm % item.interval;
+  return state.currentKm + (item.interval - offset);
+}
+
+function getStatus(item) {
+  if (item.interval === 0) return 'info';
+  const diff = getNextDueKm(item) - state.currentKm;
+  if (diff <= 0) return 'danger';
+  if (diff <= item.warnAt) return 'warn';
+  return 'ok';
+}
+
+function getBarPct(item) {
+  if (item.interval === 0) return 100;
+  const last = getLastDoneKm(item);
+  if (last == null) return 50;
+  return Math.min(100, Math.round(((state.currentKm - last) / item.interval) * 100));
+}
+
+// ─── RENDER ──────────────────────────────────────────────
+function renderCard(item) {
+  const status = getStatus(item);
+  const next   = getNextDueKm(item);
+  const diff   = next !== null ? next - state.currentKm : null;
+  const pct    = getBarPct(item);
+  const last   = getLastDoneKm(item);
+
+  let badge, badgeClass, barClass, iconClass;
+  if (status === 'danger') {
+    badge = 'OVERDUE'; badgeClass = 'badge-danger'; barClass = 'bar-danger'; iconClass = 'icon-danger';
+  } else if (status === 'warn') {
+    badge = `~${Math.round(diff/100)*100} km`; badgeClass = 'badge-warn'; barClass = 'bar-warn'; iconClass = 'icon-warn';
+  } else if (status === 'ok') {
+    badge = fmtKm(diff); badgeClass = 'badge-ok'; barClass = 'bar-ok'; iconClass = 'icon-ok';
+  } else {
+    badge = 'Manual'; badgeClass = 'badge-done'; barClass = 'bar-done'; iconClass = 'icon-done';
+  }
+
+  const meta = last != null
+    ? `Last: ${fmtKm(last)} · Next: ${next ? fmtKm(next) : '—'}`
+    : `Every ${fmtKm(item.interval)} · Not yet logged`;
+
+  const overrideBtn = item.interval > 0
+    ? `<button class="override-btn" data-action="override" data-id="${item.id}">Set next km</button>` : '';
+
+  return `
+    <div class="item-card status-${status === 'info' ? 'done' : status}">
+      <div class="item-icon ${iconClass}">${item.icon}</div>
+      <div class="item-body">
+        <div class="item-name">${item.name}</div>
+        <div class="item-meta">${meta}</div>
+        <div class="item-bar-wrap"><div class="item-bar ${barClass}" style="width:${pct}%"></div></div>
+      </div>
+      <div class="item-right">
+        <span class="item-badge ${badgeClass}">${badge}</span>
+        <button class="log-btn" data-action="log" data-id="${item.id}">Log ✓</button>
+        ${overrideBtn}
+      </div>
+    </div>`;
+}
+
+function renderAll() {
+  const overdue = ITEMS.filter(i => getStatus(i) === 'danger').length;
+  const soon    = ITEMS.filter(i => getStatus(i) === 'warn').length;
+  const ok      = ITEMS.filter(i => getStatus(i) === 'ok').length;
+  document.getElementById('cnt-overdue').textContent = overdue;
+  document.getElementById('cnt-soon').textContent    = soon;
+  document.getElementById('cnt-ok').textContent      = ok;
+  document.getElementById('headerKm').textContent    = fmtKm(state.currentKm);
+
+  const urgentItems = ITEMS.filter(i => getStatus(i) === 'danger');
+  document.getElementById('list-urgent').innerHTML = urgentItems.length
+    ? urgentItems.map(renderCard).join('')
+    : '<div class="empty">✅ Nothing overdue</div>';
+
+  const soonItems = ITEMS.filter(i => getStatus(i) === 'warn');
+  document.getElementById('list-soon').innerHTML = soonItems.length
+    ? soonItems.map(renderCard).join('')
+    : '<div class="empty">Nothing due within 3,000 km</div>';
+
+  const cats = [...new Set(ITEMS.map(i => i.category))];
+  document.getElementById('list-all').innerHTML = cats.map(cat => {
+    const catItems = ITEMS.filter(i => i.category === cat);
+    return `<div class="section-label">${cat}</div>` + catItems.map(renderCard).join('');
+  }).join('');
+
+  const hist = [...state.history].reverse();
+  document.getElementById('list-history').innerHTML = hist.length
+    ? hist.map(h => `
+      <div class="history-entry">
+        <div><div class="hist-name">${h.name}</div><div class="hist-meta">${h.notes || '—'}</div></div>
+        <div><div class="hist-km">${fmtKm(h.km)}</div><div class="hist-date">${fmtDate(h.date)}</div></div>
+      </div>`).join('')
+    : '<div class="empty">No service history yet</div>';
+
+  renderNextUp();
+}
+
+function renderNextUp() {
+  const top3 = ITEMS
+    .filter(i => i.interval > 0 && DIY_INFO[i.id])
+    .map(i => ({ item:i, diff: getNextDueKm(i) - state.currentKm }))
+    .sort((a,b) => a.diff - b.diff)
+    .slice(0, 3);
+
+  document.getElementById('list-nextup').innerHTML = top3.map(({ item, diff }) => {
+    const diy      = DIY_INFO[item.id];
+    const kmLabel  = diff <= 0 ? 'Overdue' : `Due in ~${Number(diff).toLocaleString('en-CA')} km`;
+    const diyCls   = diy.diy ? 'color:var(--ok)' : 'color:var(--warn)';
+    const diyTxt   = diy.diy ? 'DIY-friendly' : 'Shop recommended';
+    const shopLinks = diy.parts.map(p =>
+      `<a class="nextup-link shop" href="${p.url}" target="_blank" rel="noopener">🛒 ${p.label}</a>`
+    ).join('');
+    const ytLink   = diy.youtube
+      ? `<a class="nextup-link yt" href="${diy.youtube.url}" target="_blank" rel="noopener">▶ ${diy.youtube.label}</a>` : '';
+    return `
+      <div class="nextup-card">
+        <div class="nextup-header">
+          <div class="nextup-icon">${item.icon}</div>
+          <div>
+            <div class="nextup-title">${item.name} <span style="font-size:10px;font-family:var(--mono);margin-left:4px;${diyCls}">${diyTxt}</span></div>
+            <div class="nextup-km">${kmLabel}</div>
+          </div>
+        </div>
+        <div class="nextup-note">${item.note}</div>
+        <div class="nextup-links">${shopLinks}${ytLink}</div>
+      </div>`;
+  }).join('') || '<div class="empty">No upcoming items with DIY guides</div>';
+}
+
+// ─── TABS ────────────────────────────────────────────────
+function switchTab(tab) {
+  ['dashboard','all','history'].forEach(t => {
+    document.getElementById('tab-'+t).style.display = t === tab ? '' : 'none';
+  });
+  document.querySelectorAll('.tab').forEach(el => {
+    el.classList.toggle('active', el.dataset.tab === tab);
+  });
+}
+
+// ─── KM UPDATE ───────────────────────────────────────────
+async function updateKm() {
+  const val = parseInt(document.getElementById('kmInput').value);
+  if (!val || val < state.currentKm) { showToast('Enter a valid odometer reading ↑'); return; }
+  snapshot();
+  state.currentKm = val;
+  document.getElementById('kmInput').value = '';
+  await saveState();
+  renderAll();
+  showToast(`Odometer updated to ${fmtKm(val)}`, true);
+}
+
+// ─── LOG SERVICE MODAL ───────────────────────────────────
+let activeItemId = null;
+
+function openLogModal(itemId) {
+  const item = ITEMS.find(i => i.id === itemId);
+  activeItemId = itemId;
+  document.getElementById('modal-title').textContent = item.name;
+  document.getElementById('modal-sub').textContent   = item.note || 'Log when this service was done';
+  document.getElementById('modal-km').value          = state.currentKm;
+  document.getElementById('modal-notes').value       = '';
+  document.getElementById('modal').classList.remove('hidden');
+}
+
+function closeLogModal() {
+  document.getElementById('modal').classList.add('hidden');
+  activeItemId = null;
+}
+
+async function confirmLog() {
+  const km    = parseInt(document.getElementById('modal-km').value);
+  const notes = document.getElementById('modal-notes').value.trim();
+  if (!km) { showToast('Enter the odometer reading'); return; }
+  const item = ITEMS.find(i => i.id === activeItemId);
+  snapshot();
+  state.lastDoneKm[activeItemId] = km;
+  if (state.overrideNextKm) delete state.overrideNextKm[activeItemId];
+  state.history.push({ id:activeItemId, name:item.name, km, date:new Date().toISOString(), notes });
+  await saveState();
+  renderAll();
+  closeLogModal();
+  showToast(`${item.name} logged ✓`, true);
+}
+
+// ─── SET NEXT KM MODAL ───────────────────────────────────
+let overrideItemId = null;
+
+function openOverrideModal(itemId) {
+  const item = ITEMS.find(i => i.id === itemId);
+  overrideItemId = itemId;
+  const currentNext = getNextDueKm(item);
+  document.getElementById('override-title').textContent = `Set Next Due — ${item.name}`;
+  document.getElementById('override-info').innerHTML =
+    `Current odometer: <strong style="color:var(--text)">${fmtKm(state.currentKm)}</strong><br>
+     Calculated next due: <strong style="color:var(--accent)">${currentNext ? fmtKm(currentNext) : '—'}</strong><br>
+     Enter the exact km from your shop receipt.`;
+  document.getElementById('override-km').value = currentNext || '';
+  document.getElementById('override-modal').classList.remove('hidden');
+}
+
+function closeOverrideModal() {
+  document.getElementById('override-modal').classList.add('hidden');
+  overrideItemId = null;
+}
+
+async function confirmOverride() {
+  const km = parseInt(document.getElementById('override-km').value);
+  if (!km || km < 1000) { showToast('Enter a valid km value'); return; }
+  snapshot();
+  if (!state.overrideNextKm) state.overrideNextKm = {};
+  state.overrideNextKm[overrideItemId] = km;
+  await saveState();
+  renderAll();
+  closeOverrideModal();
+  showToast(`Next due set to ${fmtKm(km)} ✓`, true);
+}
+
+// ─── TOAST ───────────────────────────────────────────────
+let toastTimer = null;
+function showToast(msg, withUndo = false) {
+  clearTimeout(toastTimer);
+  document.getElementById('toast-msg').textContent = msg;
+  const undoBtn = document.getElementById('toast-undo-btn');
+  undoBtn.style.display = withUndo ? 'inline-block' : 'none';
+  const t = document.getElementById('toast');
+  t.classList.add('show');
+  toastTimer = setTimeout(() => {
+    t.classList.remove('show');
+    if (!withUndo) undoSnapshot = null; // clear snapshot after toast expires if no undo shown
+  }, withUndo ? 5000 : 2800);
+}
+
+// ─── EVENT DELEGATION ────────────────────────────────────
+document.body.addEventListener('click', e => {
+  // Tab switching
+  const tab = e.target.closest('[data-tab]');
+  if (tab) { switchTab(tab.dataset.tab); return; }
+
+  // Card buttons
+  const btn = e.target.closest('[data-action]');
+  if (btn) {
+    if (btn.dataset.action === 'log')      openLogModal(btn.dataset.id);
+    if (btn.dataset.action === 'override') openOverrideModal(btn.dataset.id);
+    return;
+  }
+
+  // Undo
+  if (e.target.id === 'toast-undo-btn') { undoLast(); return; }
+
+  // Save km
+  if (e.target.id === 'btn-save-km') { updateKm(); return; }
+
+  // Log modal buttons
+  if (e.target.id === 'btn-modal-cancel')   { closeLogModal(); return; }
+  if (e.target.id === 'btn-modal-confirm')  { confirmLog(); return; }
+
+  // Override modal buttons
+  if (e.target.id === 'btn-override-cancel')  { closeOverrideModal(); return; }
+  if (e.target.id === 'btn-override-confirm') { confirmOverride(); return; }
+
+  // Close modals on overlay click
+  if (e.target.id === 'modal')          { closeLogModal(); return; }
+  if (e.target.id === 'override-modal') { closeOverrideModal(); return; }
+});
+
+// Enter key in km input
+document.getElementById('kmInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') updateKm();
+});
+
+// ─── INIT ────────────────────────────────────────────────
+(async () => {
+  await loadState();
+  document.getElementById('loading-screen').classList.add('hidden');
+  renderAll();
+})();
+</script>
+</body>
+</html>
