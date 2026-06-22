@@ -290,6 +290,19 @@
   .hist-meta  { font-family: var(--mono); font-size: 11px; color: var(--text2); }
   .hist-km    { font-family: var(--mono); font-size: 13px; color: var(--ok); text-align: right; }
   .hist-date  { font-size: 11px; color: var(--text2); text-align: right; margin-top: 2px; }
+  .hist-delete-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--muted);
+    font-size: 11px;
+    padding: 3px 8px;
+    cursor: pointer;
+    font-family: var(--sans);
+    margin-top: 6px;
+    transition: border-color 0.15s, color 0.15s;
+  }
+  .hist-delete-btn:active { color: var(--danger); border-color: var(--danger); }
 
   /* EMPTY */
   .empty { text-align: center; padding: 40px 20px; color: var(--muted); font-size: 13px; }
@@ -782,12 +795,16 @@ function renderAll() {
     return `<div class="section-label">${cat}</div>` + catItems.map(renderCard).join('');
   }).join('');
 
-  const hist = [...state.history].reverse();
+  const hist = [...state.history].map((h, i) => ({ ...h, _origIndex: i })).reverse();
   document.getElementById('list-history').innerHTML = hist.length
     ? hist.map(h => `
       <div class="history-entry">
         <div><div class="hist-name">${h.name}</div><div class="hist-meta">${h.notes || '—'}</div></div>
-        <div><div class="hist-km">${fmtKm(h.km)}</div><div class="hist-date">${fmtDate(h.date)}</div></div>
+        <div style="text-align:right">
+          <div class="hist-km">${fmtKm(h.km)}</div>
+          <div class="hist-date">${fmtDate(h.date)}</div>
+          <button class="hist-delete-btn" data-action="delete-history" data-index="${h._origIndex}">Remove</button>
+        </div>
       </div>`).join('')
     : '<div class="empty">No service history yet</div>';
 
@@ -914,7 +931,30 @@ async function confirmOverride() {
   showToast(`Next due set to ${fmtKm(km)} ✓`, true);
 }
 
-// ─── TOAST ───────────────────────────────────────────────
+// ─── DELETE HISTORY ENTRY ────────────────────────────────
+async function deleteHistoryEntry(index) {
+  const entry = state.history[index];
+  if (!entry) return;
+
+  snapshot(); // allow undo via toast
+
+  // Remove the entry
+  state.history.splice(index, 1);
+
+  // Recalculate lastDoneKm for this item from remaining history
+  const remaining = state.history.filter(h => h.id === entry.id);
+  if (remaining.length > 0) {
+    // Set to the most recent remaining log
+    state.lastDoneKm[entry.id] = Math.max(...remaining.map(h => h.km));
+  } else {
+    // No more history for this item — remove lastDoneKm entirely
+    delete state.lastDoneKm[entry.id];
+  }
+
+  await saveState();
+  renderAll();
+  showToast(`${entry.name} entry removed`, true);
+}
 let toastTimer = null;
 function showToast(msg, withUndo = false) {
   clearTimeout(toastTimer);
@@ -938,8 +978,9 @@ document.body.addEventListener('click', e => {
   // Card buttons
   const btn = e.target.closest('[data-action]');
   if (btn) {
-    if (btn.dataset.action === 'log')      openLogModal(btn.dataset.id);
-    if (btn.dataset.action === 'override') openOverrideModal(btn.dataset.id);
+    if (btn.dataset.action === 'log')            openLogModal(btn.dataset.id);
+    if (btn.dataset.action === 'override')       openOverrideModal(btn.dataset.id);
+    if (btn.dataset.action === 'delete-history') deleteHistoryEntry(parseInt(btn.dataset.index));
     return;
   }
 
