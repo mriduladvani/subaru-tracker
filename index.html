@@ -502,8 +502,10 @@
     <div id="list-urgent"></div>
     <div class="section-label">Coming Up (within 3,000 km)</div>
     <div id="list-soon"></div>
-    <div class="section-label">Next Up · DIY Guide</div>
-    <div id="list-nextup"></div>
+    <div class="section-label">🔧 DIY – Due Within 1,000 km</div>
+    <div id="list-nextup-diy"></div>
+    <div class="section-label">🏪 Take to Mechanic – Due Within 1,000 km</div>
+    <div id="list-nextup-mechanic"></div>
   </div>
 
   <!-- ALL ITEMS TAB -->
@@ -573,38 +575,52 @@ const db       = getFirestore(app);
 const STATE_DOC = doc(db, 'tracker', 'state');
 
 // ─── STATE ───────────────────────────────────────────────
-function defaultState() {
-  return {
-    currentKm: 112050,
-    history: [
-      { id:'ontario_safety', name:'Ontario Safety Inspection',          km:112050, date:new Date().toISOString(), notes:'Required by Ontario law at purchase' },
-      { id:'seat_leather',   name:'Seat Knob & Leather Change',         km:112050, date:new Date().toISOString(), notes:'Done at purchase' },
-      { id:'brake_noise',    name:'Brake Rotor Noise Reduction',        km:112050, date:new Date().toISOString(), notes:'Done at purchase' },
-      { id:'tire_balance',   name:'Tire Balancing & Wiper Fluid Top Up',km:112050, date:new Date().toISOString(), notes:'Done at purchase' },
-    ],
-    lastDoneKm:     { ontario_safety:112050, tire_balance:112050, brake_noise:112050 },
-    overrideNextKm: {}
-  };
-}
+// FIREBASE IS THE SINGLE SOURCE OF TRUTH.
+// Hardcoded defaults below only apply on the very first ever load
+// when Firestore has no document yet. After that, every value
+// comes exclusively from Firestore — nothing is hardcoded in HTML.
 
-let state = defaultState();
+const FIRST_RUN_DEFAULTS = {
+  currentKm:      112050,
+  history: [
+    { id:'ontario_safety', name:'Ontario Safety Inspection',           km:112050, date:new Date().toISOString(), notes:'Required by Ontario law at purchase' },
+    { id:'seat_leather',   name:'Seat Knob & Leather Change',          km:112050, date:new Date().toISOString(), notes:'Done at purchase' },
+    { id:'brake_noise',    name:'Brake Rotor Noise Reduction',         km:112050, date:new Date().toISOString(), notes:'Done at purchase' },
+    { id:'tire_balance',   name:'Tire Balancing & Wiper Fluid Top Up', km:112050, date:new Date().toISOString(), notes:'Done at purchase' },
+  ],
+  lastDoneKm:     { ontario_safety:112050, tire_balance:112050, brake_noise:112050 },
+  overrideNextKm: {}
+};
+
+// state starts empty — always replaced by Firebase on load
+let state = {
+  currentKm:      0,
+  history:        [],
+  lastDoneKm:     {},
+  overrideNextKm: {}
+};
 
 async function loadState() {
   try {
     const snap = await getDoc(STATE_DOC);
     if (snap.exists()) {
+      // Firebase has data — use it exclusively, no fallback to hardcoded values
       const d = snap.data();
       state = {
-        currentKm:      d.currentKm      ?? state.currentKm,
-        history:        d.history        ? JSON.parse(d.history) : state.history,
-        lastDoneKm:     d.lastDoneKm     ?? state.lastDoneKm,
-        overrideNextKm: d.overrideNextKm ?? state.overrideNextKm,
+        currentKm:      d.currentKm,
+        history:        d.history ? JSON.parse(d.history) : [],
+        lastDoneKm:     d.lastDoneKm     || {},
+        overrideNextKm: d.overrideNextKm || {},
       };
     } else {
-      await saveState(); // first run — persist defaults
+      // Truly first ever run — write defaults to Firebase, then use them
+      state = { ...FIRST_RUN_DEFAULTS, history: [...FIRST_RUN_DEFAULTS.history] };
+      await saveState();
     }
   } catch(e) {
-    console.warn('Firestore load failed, using defaults', e);
+    console.warn('Firestore load failed', e);
+    // Only fall back to defaults if Firebase is completely unreachable
+    state = { ...FIRST_RUN_DEFAULTS, history: [...FIRST_RUN_DEFAULTS.history] };
   }
 }
 
@@ -615,6 +631,7 @@ async function saveState() {
       history:        JSON.stringify(state.history),
       lastDoneKm:     state.lastDoneKm,
       overrideNextKm: state.overrideNextKm,
+      diyInfo:        JSON.stringify(DIY_INFO),
     });
   } catch(e) {
     console.warn('Firestore save failed', e);
@@ -687,18 +704,45 @@ const ITEMS = [
   { id:'head_gasket_check',name:'Head Gasket Inspection',  icon:'🔍', interval:30000, warnAt:5000, category:'Subaru-Specific',note:'Known Subaru concern — check for oil/coolant seepage' },
 ];
 
-// ─── DIY INFO ────────────────────────────────────────────
+// ─── DIY INFO (all items) ────────────────────────────────
 const DIY_INFO = {
-  oil_change:       { diy:true,  parts:[{label:'Amazon – 0W-20 Synthetic Oil',          url:'https://www.amazon.ca/s?k=0W-20+full+synthetic+oil+subaru'},{label:'Amazon – Oil Filter (Subaru)',      url:'https://www.amazon.ca/s?k=subaru+outback+2016+oil+filter'},{label:'Canadian Tire – Oil & Filter',    url:'https://www.canadiantire.ca/en/search.html#q=0W-20+oil+filter&lang=en'}], youtube:{label:'How to Change Oil – 2016 Subaru Outback',    url:'https://www.youtube.com/results?search_query=2016+subaru+outback+oil+change+DIY'} },
-  tire_rotation:    { diy:true,  parts:[{label:'Amazon – Torque Wrench',                url:'https://www.amazon.ca/s?k=torque+wrench'},{label:'Amazon – Car Jack Stands',            url:'https://www.amazon.ca/s?k=jack+stands'}], youtube:{label:'How to Rotate Tires – AWD Subaru',           url:'https://www.youtube.com/results?search_query=subaru+outback+AWD+tire+rotation+DIY'} },
-  cabin_filter:     { diy:true,  parts:[{label:'Amazon – Cabin Air Filter (2016 Outback)',url:'https://www.amazon.ca/s?k=2016+subaru+outback+cabin+air+filter'},{label:'Canadian Tire – Cabin Filter', url:'https://www.canadiantire.ca/en/search.html#q=cabin+air+filter+subaru+outback&lang=en'}], youtube:{label:'Replace Cabin Filter – Subaru Outback',       url:'https://www.youtube.com/results?search_query=2016+subaru+outback+cabin+filter+replacement'} },
-  air_filter:       { diy:true,  parts:[{label:'Amazon – Engine Air Filter (2016 Outback)',url:'https://www.amazon.ca/s?k=2016+subaru+outback+engine+air+filter'},{label:'Canadian Tire – Air Filter',url:'https://www.canadiantire.ca/en/search.html#q=engine+air+filter+subaru&lang=en'}], youtube:{label:'Engine Air Filter DIY – Subaru Outback',     url:'https://www.youtube.com/results?search_query=2016+subaru+outback+engine+air+filter+replacement'} },
-  brake_pads:       { diy:false, parts:[{label:'Amazon – Brake Pads (Outback 2016)',     url:'https://www.amazon.ca/s?k=2016+subaru+outback+brake+pads'},{label:'Canadian Tire – Brake Pads',    url:'https://www.canadiantire.ca/en/search.html#q=subaru+outback+brake+pads&lang=en'}], youtube:{label:'Brake Pad Replacement – Subaru Outback',      url:'https://www.youtube.com/results?search_query=2016+subaru+outback+brake+pad+replacement'} },
-  wiper_blades:     { diy:true,  parts:[{label:'Amazon – Wiper Blades (2016 Outback)',   url:'https://www.amazon.ca/s?k=2016+subaru+outback+wiper+blades'},{label:'Canadian Tire – Wipers',        url:'https://www.canadiantire.ca/en/search.html#q=subaru+outback+wiper+blades&lang=en'}], youtube:{label:'Change Wiper Blades – Subaru Outback',        url:'https://www.youtube.com/results?search_query=subaru+outback+wiper+blade+replacement'} },
-  cvt_fluid:        { diy:false, parts:[{label:'Amazon – Subaru CVTF-II Fluid',          url:'https://www.amazon.ca/s?k=subaru+CVTF-II+transmission+fluid'}], youtube:{label:'CVT Fluid Change – Subaru Outback',              url:'https://www.youtube.com/results?search_query=subaru+outback+CVT+fluid+change'} },
-  tire_pressure:    { diy:true,  parts:[{label:'Amazon – Digital Tire Gauge',            url:'https://www.amazon.ca/s?k=digital+tire+pressure+gauge'},{label:'Amazon – Portable Air Compressor',   url:'https://www.amazon.ca/s?k=portable+car+air+compressor'}], youtube:{label:'Check & Inflate Tires Properly',                url:'https://www.youtube.com/results?search_query=how+to+check+tire+pressure+properly'} },
-  spark_plugs:      { diy:true,  parts:[{label:'Amazon – NGK Iridium Plugs (2016 Outback)',url:'https://www.amazon.ca/s?k=NGK+iridium+spark+plugs+2016+subaru+outback'}], youtube:{label:'Spark Plug Replacement – 2016 Subaru Outback',  url:'https://www.youtube.com/results?search_query=2016+subaru+outback+2.5+spark+plug+replacement'} },
-  head_gasket_check:{ diy:false, parts:[{label:'Amazon – Subaru Head Gasket Conditioner',url:'https://www.amazon.ca/s?k=subaru+head+gasket+conditioner'}], youtube:{label:'Head Gasket Check – What to Look For (Subaru)',   url:'https://www.youtube.com/results?search_query=subaru+head+gasket+inspection+signs'} },
+  // ENGINE
+  oil_change:       { diy:true,  parts:[{label:'Amazon – 0W-20 Synthetic Oil',             url:'https://www.amazon.ca/s?k=0W-20+full+synthetic+oil+subaru'},{label:'Amazon – Oil Filter',              url:'https://www.amazon.ca/s?k=subaru+outback+2016+oil+filter'},{label:'Canadian Tire – Oil & Filter',    url:'https://www.canadiantire.ca/en/search.html#q=0W-20+oil+filter&lang=en'}],                                                                                                                                     youtube:{label:'Oil Change DIY – 2016 Subaru Outback',              url:'https://www.youtube.com/results?search_query=2016+subaru+outback+oil+change+DIY'} },
+  cabin_filter:     { diy:true,  parts:[{label:'Amazon – Cabin Air Filter',                 url:'https://www.amazon.ca/s?k=2016+subaru+outback+cabin+air+filter'},{label:'Canadian Tire – Cabin Filter',  url:'https://www.canadiantire.ca/en/search.html#q=cabin+air+filter+subaru+outback&lang=en'}],                                                                                                                          youtube:{label:'Cabin Filter Replacement – Subaru Outback',         url:'https://www.youtube.com/results?search_query=2016+subaru+outback+cabin+filter+replacement'} },
+  air_filter:       { diy:true,  parts:[{label:'Amazon – Engine Air Filter',                url:'https://www.amazon.ca/s?k=2016+subaru+outback+engine+air+filter'},{label:'Canadian Tire – Air Filter',   url:'https://www.canadiantire.ca/en/search.html#q=engine+air+filter+subaru&lang=en'}],                                                                                                                               youtube:{label:'Engine Air Filter DIY – Subaru Outback',            url:'https://www.youtube.com/results?search_query=2016+subaru+outback+engine+air+filter+replacement'} },
+  spark_plugs:      { diy:true,  parts:[{label:'Amazon – NGK Iridium Spark Plugs',          url:'https://www.amazon.ca/s?k=NGK+iridium+spark+plugs+2016+subaru+outback'}],                                                                                                                                                                                                                                                  youtube:{label:'Spark Plug Replacement – 2016 Subaru Outback',      url:'https://www.youtube.com/results?search_query=2016+subaru+outback+2.5+spark+plug+replacement'} },
+  pcv_valve:        { diy:true,  parts:[{label:'Amazon – PCV Valve (2016 Outback)',          url:'https://www.amazon.ca/s?k=PCV+valve+2016+subaru+outback'}],                                                                                                                                                                                                                                                                youtube:{label:'PCV Valve Replacement – Subaru Outback',            url:'https://www.youtube.com/results?search_query=subaru+outback+PCV+valve+replacement'} },
+  // TRANSMISSION
+  cvt_fluid:        { diy:false, parts:[{label:'Amazon – Subaru CVTF-II Fluid',             url:'https://www.amazon.ca/s?k=subaru+CVTF-II+transmission+fluid'}],                                                                                                                                                                                                                                                            youtube:{label:'CVT Fluid Service – Subaru Outback',                url:'https://www.youtube.com/results?search_query=subaru+outback+CVT+fluid+change'} },
+  diff_front:       { diy:false, parts:[{label:'Amazon – Subaru Front Diff Fluid',           url:'https://www.amazon.ca/s?k=subaru+front+differential+fluid'}],                                                                                                                                                                                                                                                              youtube:{label:'Front Differential Fluid – Subaru Outback',         url:'https://www.youtube.com/results?search_query=subaru+outback+front+differential+fluid+change'} },
+  diff_rear:        { diy:false, parts:[{label:'Amazon – Subaru Rear Diff GL-5 Fluid',       url:'https://www.amazon.ca/s?k=subaru+rear+differential+GL-5+fluid'}],                                                                                                                                                                                                                                                          youtube:{label:'Rear Differential Fluid – Subaru Outback',          url:'https://www.youtube.com/results?search_query=subaru+outback+rear+differential+fluid+change'} },
+  // BRAKES
+  brake_fluid:      { diy:false, parts:[{label:'Amazon – DOT 3 Brake Fluid',                url:'https://www.amazon.ca/s?k=DOT+3+brake+fluid'}],                                                                                                                                                                                                                                                                            youtube:{label:'Brake Fluid Flush – Subaru Outback',                url:'https://www.youtube.com/results?search_query=subaru+outback+brake+fluid+flush'} },
+  brake_pads:       { diy:false, parts:[{label:'Amazon – Brake Pads (2016 Outback)',         url:'https://www.amazon.ca/s?k=2016+subaru+outback+brake+pads'},{label:'Canadian Tire – Brake Pads',         url:'https://www.canadiantire.ca/en/search.html#q=subaru+outback+brake+pads&lang=en'}],                                                                                                                          youtube:{label:'Brake Pad Replacement – Subaru Outback',            url:'https://www.youtube.com/results?search_query=2016+subaru+outback+brake+pad+replacement'} },
+  brake_rotors:     { diy:false, parts:[{label:'Amazon – Brake Rotors (2016 Outback)',       url:'https://www.amazon.ca/s?k=2016+subaru+outback+brake+rotors'},{label:'Canadian Tire – Rotors',           url:'https://www.canadiantire.ca/en/search.html#q=subaru+outback+brake+rotors&lang=en'}],                                                                                                                        youtube:{label:'Brake Rotor Replacement – Subaru Outback',          url:'https://www.youtube.com/results?search_query=2016+subaru+outback+brake+rotor+replacement'} },
+  // TIRES
+  tire_rotation:    { diy:true,  parts:[{label:'Amazon – Torque Wrench',                    url:'https://www.amazon.ca/s?k=torque+wrench'},{label:'Amazon – Jack Stands',                  url:'https://www.amazon.ca/s?k=jack+stands'}],                                                                                                                                                                                  youtube:{label:'Tire Rotation DIY – AWD Subaru',                    url:'https://www.youtube.com/results?search_query=subaru+outback+AWD+tire+rotation+DIY'} },
+  tire_balance:     { diy:false, parts:[{label:'Canadian Tire – Tire Balancing Service',     url:'https://www.canadiantire.ca/en/automotive-services.html'}],                                                                                                                                                                                                                                                                youtube:{label:'Why Tire Balancing Matters – Explained',            url:'https://www.youtube.com/results?search_query=tire+balancing+explained+why+important'} },
+  tire_alignment:   { diy:false, parts:[{label:'Canadian Tire – Wheel Alignment Service',    url:'https://www.canadiantire.ca/en/automotive-services.html'}],                                                                                                                                                                                                                                                                youtube:{label:'Wheel Alignment – What Happens If You Skip It',     url:'https://www.youtube.com/results?search_query=wheel+alignment+subaru+outback+what+to+expect'} },
+  tire_pressure:    { diy:true,  parts:[{label:'Amazon – Digital Tire Pressure Gauge',       url:'https://www.amazon.ca/s?k=digital+tire+pressure+gauge'},{label:'Amazon – Portable Air Compressor',    url:'https://www.amazon.ca/s?k=portable+car+air+compressor'}],                                                                                                                                                     youtube:{label:'How to Check & Inflate Tires Properly',             url:'https://www.youtube.com/results?search_query=how+to+check+tire+pressure+properly'} },
+  // COOLING
+  coolant:          { diy:false, parts:[{label:'Amazon – Subaru Super Coolant (Blue)',       url:'https://www.amazon.ca/s?k=subaru+super+coolant+blue'}],                                                                                                                                                                                                                                                                    youtube:{label:'Coolant Flush – Subaru Outback',                    url:'https://www.youtube.com/results?search_query=subaru+outback+coolant+flush'} },
+  thermostat:       { diy:false, parts:[{label:'Amazon – Thermostat (2016 Outback 2.5)',     url:'https://www.amazon.ca/s?k=2016+subaru+outback+thermostat+2.5'}],                                                                                                                                                                                                                                                           youtube:{label:'Thermostat Replacement – Subaru Outback',           url:'https://www.youtube.com/results?search_query=subaru+outback+thermostat+replacement'} },
+  // BELTS
+  serpentine_belt:  { diy:true,  parts:[{label:'Amazon – Serpentine Belt (2016 Outback)',    url:'https://www.amazon.ca/s?k=2016+subaru+outback+serpentine+belt'}],                                                                                                                                                                                                                                                          youtube:{label:'Serpentine Belt Replacement – Subaru Outback',      url:'https://www.youtube.com/results?search_query=2016+subaru+outback+serpentine+belt+replacement'} },
+  accessory_belt:   { diy:true,  parts:[{label:'Amazon – Accessory Drive Belt (2016 Outback)',url:'https://www.amazon.ca/s?k=2016+subaru+outback+accessory+drive+belt'}],                                                                                                                                                                                                                                                   youtube:{label:'Accessory Belt Replacement – Subaru Outback',       url:'https://www.youtube.com/results?search_query=subaru+outback+accessory+drive+belt+replacement'} },
+  // FUEL
+  fuel_filter:      { diy:false, parts:[{label:'Amazon – Fuel Filter / Pump (2016 Outback)',  url:'https://www.amazon.ca/s?k=2016+subaru+outback+fuel+filter+pump'}],                                                                                                                                                                                                                                                       youtube:{label:'Fuel Filter Inspection – Subaru Outback',           url:'https://www.youtube.com/results?search_query=subaru+outback+fuel+filter+replacement'} },
+  // ELECTRICAL
+  battery:          { diy:true,  parts:[{label:'Amazon – Battery Tester / Load Tester',      url:'https://www.amazon.ca/s?k=car+battery+load+tester'},{label:'Canadian Tire – Car Battery (Subaru Outback)',url:'https://www.canadiantire.ca/en/search.html#q=subaru+outback+battery&lang=en'}],                                                                                                                          youtube:{label:'Battery Test & Replacement – Subaru Outback',       url:'https://www.youtube.com/results?search_query=2016+subaru+outback+battery+replacement'} },
+  // SUSPENSION
+  shocks_struts:    { diy:false, parts:[{label:'Amazon – Shocks & Struts (2016 Outback)',    url:'https://www.amazon.ca/s?k=2016+subaru+outback+shocks+struts'}],                                                                                                                                                                                                                                                            youtube:{label:'Shocks & Struts Inspection – Subaru Outback',       url:'https://www.youtube.com/results?search_query=subaru+outback+shocks+struts+inspection+replacement'} },
+  bushings:         { diy:false, parts:[{label:'Amazon – Suspension Bushings (2016 Outback)',url:'https://www.amazon.ca/s?k=2016+subaru+outback+suspension+bushings'}],                                                                                                                                                                                                                                                      youtube:{label:'Suspension Bushing Inspection – Subaru Outback',    url:'https://www.youtube.com/results?search_query=subaru+outback+suspension+bushing+inspection'} },
+  // VISIBILITY
+  wiper_blades:     { diy:true,  parts:[{label:'Amazon – Wiper Blades (2016 Outback)',       url:'https://www.amazon.ca/s?k=2016+subaru+outback+wiper+blades'},{label:'Canadian Tire – Wipers',           url:'https://www.canadiantire.ca/en/search.html#q=subaru+outback+wiper+blades&lang=en'}],                                                                                                                        youtube:{label:'Wiper Blade Replacement – Subaru Outback',          url:'https://www.youtube.com/results?search_query=subaru+outback+wiper+blade+replacement'} },
+  headlights:       { diy:true,  parts:[{label:'Amazon – Headlight Bulbs (2016 Outback)',    url:'https://www.amazon.ca/s?k=2016+subaru+outback+headlight+bulb'}],                                                                                                                                                                                                                                                           youtube:{label:'Headlight Bulb Replacement – Subaru Outback',       url:'https://www.youtube.com/results?search_query=2016+subaru+outback+headlight+bulb+replacement'} },
+  // SUBARU-SPECIFIC
+  head_gasket_check:{ diy:false, parts:[{label:'Amazon – Head Gasket Conditioner (Subaru)', url:'https://www.amazon.ca/s?k=subaru+head+gasket+conditioner'}],                                                                                                                                                                                                                                                                youtube:{label:'Head Gasket Inspection – Signs to Watch (Subaru)',  url:'https://www.youtube.com/results?search_query=subaru+head+gasket+inspection+signs'} },
 };
 
 // ─── HELPERS ─────────────────────────────────────────────
@@ -816,35 +860,46 @@ function renderAll() {
 }
 
 function renderNextUp() {
-  const top3 = ITEMS
-    .filter(i => i.interval > 0 && DIY_INFO[i.id])
-    .map(i => ({ item:i, diff: getNextDueKm(i) - state.currentKm }))
-    .sort((a,b) => a.diff - b.diff)
-    .slice(0, 3);
+  const THRESHOLD = 1000;
 
-  document.getElementById('list-nextup').innerHTML = top3.map(({ item, diff }) => {
+  // All items within 1000km (or overdue), that have DIY_INFO
+  const due = ITEMS
+    .filter(i => i.interval > 0 && DIY_INFO[i.id])
+    .map(i => ({ item: i, diff: getNextDueKm(i) - state.currentKm }))
+    .filter(({ diff }) => diff <= THRESHOLD)
+    .sort((a, b) => a.diff - b.diff);
+
+  const diyItems      = due.filter(({ item }) => DIY_INFO[item.id].diy);
+  const mechanicItems = due.filter(({ item }) => !DIY_INFO[item.id].diy);
+
+  function renderNextUpCard({ item, diff }) {
     const diy      = DIY_INFO[item.id];
-    const kmLabel  = diff <= 0 ? 'Overdue' : `Due in ~${Number(diff).toLocaleString('en-CA')} km`;
-    const diyCls   = diy.diy ? 'color:var(--ok)' : 'color:var(--warn)';
-    const diyTxt   = diy.diy ? 'DIY-friendly' : 'Shop recommended';
+    const kmLabel  = diff <= 0 ? '⚠️ Overdue' : `Due in ~${Number(diff).toLocaleString('en-CA')} km`;
     const shopLinks = diy.parts.map(p =>
       `<a class="nextup-link shop" href="${p.url}" target="_blank" rel="noopener">🛒 ${p.label}</a>`
     ).join('');
-    const ytLink   = diy.youtube
-      ? `<a class="nextup-link yt" href="${diy.youtube.url}" target="_blank" rel="noopener">▶ ${diy.youtube.label}</a>` : '';
+    const ytLink = `<a class="nextup-link yt" href="${diy.youtube.url}" target="_blank" rel="noopener">▶ ${diy.youtube.label}</a>`;
     return `
       <div class="nextup-card">
         <div class="nextup-header">
           <div class="nextup-icon">${item.icon}</div>
           <div>
-            <div class="nextup-title">${item.name} <span style="font-size:10px;font-family:var(--mono);margin-left:4px;${diyCls}">${diyTxt}</span></div>
+            <div class="nextup-title">${item.name}</div>
             <div class="nextup-km">${kmLabel}</div>
           </div>
         </div>
         <div class="nextup-note">${item.note}</div>
         <div class="nextup-links">${shopLinks}${ytLink}</div>
       </div>`;
-  }).join('') || '<div class="empty">No upcoming items with DIY guides</div>';
+  }
+
+  document.getElementById('list-nextup-diy').innerHTML = diyItems.length
+    ? diyItems.map(renderNextUpCard).join('')
+    : '<div class="empty">No DIY items due within 1,000 km</div>';
+
+  document.getElementById('list-nextup-mechanic').innerHTML = mechanicItems.length
+    ? mechanicItems.map(renderNextUpCard).join('')
+    : '<div class="empty">No mechanic items due within 1,000 km</div>';
 }
 
 // ─── TABS ────────────────────────────────────────────────
