@@ -513,8 +513,6 @@
     </div>
     <div class="section-label">Needs Attention</div>
     <div id="list-urgent"></div>
-    <div class="section-label">Coming Up (within 1,000 km)</div>
-    <div id="list-soon"></div>
     <div class="section-label">🔧 DIY – Due Within 1,000 km</div>
     <div id="list-nextup-diy"></div>
     <div class="section-label">🏪 Take to Mechanic – Due Within 1,000 km</div>
@@ -847,11 +845,6 @@ function renderAll() {
   document.getElementById('list-urgent').innerHTML = urgentItems.length
     ? urgentItems.map(renderCard).join('')
     : '<div class="empty">✅ Nothing overdue</div>';
-
-  const soonItems = ITEMS.filter(i => i.interval > 0 && getNextDueKm(i) - state.currentKm > 0 && getNextDueKm(i) - state.currentKm <= SOON_KM);
-  document.getElementById('list-soon').innerHTML = soonItems.length
-    ? soonItems.map(renderCard).join('')
-    : '<div class="empty">Nothing due within 1,000 km</div>';
 
   const cats = [...new Set(ITEMS.map(i => i.category))];
   document.getElementById('list-all').innerHTML = cats.map(cat => {
