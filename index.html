@@ -276,6 +276,19 @@
   }
   .override-btn:active { opacity: 0.75; }
 
+  .skip-btn {
+    font-size: 10px;
+    color: var(--warn);
+    background: var(--warn-dim);
+    border: 1px solid rgba(245,166,35,0.25);
+    border-radius: 6px;
+    padding: 3px 8px;
+    cursor: pointer;
+    font-family: var(--sans);
+    font-weight: 500;
+  }
+  .skip-btn:active { opacity: 0.75; }
+
   /* HISTORY TAB */
   .history-entry {
     background: var(--surface);
@@ -500,7 +513,7 @@
     </div>
     <div class="section-label">Needs Attention</div>
     <div id="list-urgent"></div>
-    <div class="section-label">Coming Up (within 3,000 km)</div>
+    <div class="section-label">Coming Up (within 1,000 km)</div>
     <div id="list-soon"></div>
     <div class="section-label">🔧 DIY – Due Within 1,000 km</div>
     <div id="list-nextup-diy"></div>
@@ -655,53 +668,53 @@ async function undoLast() {
 }
 const ITEMS = [
   // ENGINE
-  { id:'oil_change',       name:'Oil Change',              icon:'🛢️', interval:8000,  warnAt:1000, category:'Engine',        note:'0W-20 full synthetic — Subaru spec' },
-  { id:'cabin_filter',     name:'Cabin Air Filter',        icon:'🌬️', interval:20000, warnAt:3000, category:'Engine',        note:'Replace more often in dusty conditions' },
-  { id:'air_filter',       name:'Engine Air Filter',       icon:'💨', interval:30000, warnAt:4000, category:'Engine',        note:'Check annually, replace every 30k' },
-  { id:'spark_plugs',      name:'Spark Plugs',             icon:'⚡', interval:60000, warnAt:8000, category:'Engine',        note:'NGK Iridium — do not use copper' },
-  { id:'pcv_valve',        name:'PCV Valve',               icon:'🔧', interval:60000, warnAt:8000, category:'Engine',        note:'Part of emissions system' },
+  { id:'oil_change',           name:'Oil Change',               icon:'🛢️', interval:8000,   warnAt:1000, category:'Engine',         note:'0W-20 full synthetic — Subaru spec' },
+  { id:'cabin_filter',         name:'Cabin Air Filter',         icon:'🌬️', interval:20000,  warnAt:1000, category:'Engine',         note:'Replace more often in dusty conditions' },
+  { id:'air_filter',           name:'Engine Air Filter',        icon:'💨', interval:30000,  warnAt:1000, category:'Engine',         note:'Check annually, replace every 30k' },
+  { id:'spark_plugs',          name:'Spark Plugs',              icon:'⚡', interval:60000,  warnAt:1000, category:'Engine',         note:'NGK Iridium — do not use copper' },
+  { id:'pcv_valve',            name:'PCV Valve',                icon:'🔧', interval:60000,  warnAt:1000, category:'Engine',         note:'Part of emissions system' },
 
   // TRANSMISSION
-  { id:'cvt_fluid',        name:'CVT Transmission Fluid',  icon:'⚙️', interval:40000, warnAt:5000, category:'Transmission',  note:'Critical — use Subaru CVTF-II only. Failure is expensive.' },
-  { id:'diff_front',       name:'Front Differential Fluid',icon:'🔩', interval:40000, warnAt:5000, category:'Transmission',  note:'Part of the AWD system' },
-  { id:'diff_rear',        name:'Rear Differential Fluid', icon:'🔩', interval:40000, warnAt:5000, category:'Transmission',  note:'Subaru Gear Oil GL-5' },
+  { id:'cvt_fluid',            name:'CVT Transmission Fluid',   icon:'⚙️', interval:40000,  warnAt:1000, category:'Transmission',  note:'Critical — use Subaru CVTF-II only. Failure is expensive.' },
+  { id:'diff_front',           name:'Front Differential Fluid', icon:'🔩', interval:40000,  warnAt:1000, category:'Transmission',  note:'Part of the AWD system' },
+  { id:'diff_rear',            name:'Rear Differential Fluid',  icon:'🔩', interval:40000,  warnAt:1000, category:'Transmission',  note:'Subaru Gear Oil GL-5' },
 
   // BRAKES
-  { id:'brake_fluid',      name:'Brake Fluid',             icon:'🛑', interval:40000, warnAt:5000, category:'Brakes',        note:'DOT 3 — flush every 2 years or 40k' },
-  { id:'brake_pads',       name:'Brake Pads Inspection',   icon:'🛑', interval:20000, warnAt:3000, category:'Brakes',        note:'Inspect — replace when <3mm' },
-  { id:'brake_rotors',     name:'Brake Rotors Inspection', icon:'⭕', interval:40000, warnAt:5000, category:'Brakes',        note:'Already had noise reduction done' },
+  { id:'brake_fluid',          name:'Brake Fluid',              icon:'🛑', interval:40000,  warnAt:1000, category:'Brakes',        note:'DOT 3 — flush every 2 years or 40k' },
+  { id:'brake_pads',           name:'Brake Pads Inspection',    icon:'🛑', interval:20000,  warnAt:1000, category:'Brakes',        note:'Inspect — replace when <3mm' },
+  { id:'brake_rotors',         name:'Brake Rotors Inspection',  icon:'⭕', interval:40000,  warnAt:1000, category:'Brakes',        note:'Already had noise reduction done' },
 
   // TIRES
-  { id:'tire_rotation',    name:'Tire Rotation',           icon:'🔄', interval:10000, warnAt:1500, category:'Tires',         note:'Critical for AWD — all 4 tires must wear evenly' },
-  { id:'tire_balance',     name:'Tire Balance',            icon:'⚖️', interval:20000, warnAt:2000, category:'Tires',         note:'Done at purchase' },
-  { id:'tire_alignment',   name:'Wheel Alignment',         icon:'📐', interval:40000, warnAt:5000, category:'Tires',         note:'Check if pulling to one side' },
-  { id:'tire_pressure',    name:'Tire Pressure Check',     icon:'💨', interval:5000,  warnAt:500,  category:'Tires',         note:'Especially important in Ontario winters' },
+  { id:'tire_rotation',        name:'Tire Rotation',            icon:'🔄', interval:10000,  warnAt:1000, category:'Tires',         note:'Critical for AWD — all 4 tires must wear evenly' },
+  { id:'tire_balance',         name:'Tire Balance',             icon:'⚖️', interval:20000,  warnAt:1000, category:'Tires',         note:'Done at purchase' },
+  { id:'tire_alignment',       name:'Wheel Alignment',          icon:'📐', interval:40000,  warnAt:1000, category:'Tires',         note:'Check if pulling to one side' },
+  { id:'tire_pressure',        name:'Tire Pressure Check',      icon:'💨', interval:5000,   warnAt:1000, category:'Tires',         note:'Especially important in Ontario winters' },
 
   // COOLING
-  { id:'coolant',          name:'Coolant Flush',           icon:'🌡️', interval:80000, warnAt:8000, category:'Cooling',       note:'Subaru Super Coolant (blue)' },
-  { id:'thermostat',       name:'Thermostat Inspection',   icon:'🌡️', interval:80000, warnAt:8000, category:'Cooling',       note:'Check with coolant service' },
+  { id:'coolant',              name:'Coolant Flush',            icon:'🌡️', interval:80000,  warnAt:1000, category:'Cooling',       note:'Subaru Super Coolant (blue)' },
+  { id:'thermostat',           name:'Thermostat Inspection',    icon:'🌡️', interval:80000,  warnAt:1000, category:'Cooling',       note:'Check with coolant service' },
 
   // BELTS
-  { id:'serpentine_belt',  name:'Serpentine Belt',         icon:'〰️', interval:100000,warnAt:10000,category:'Belts',         note:'Inspect at 100k, replace as needed. No timing belt — chain.' },
-  { id:'accessory_belt',   name:'Accessory Drive Belt',    icon:'〰️', interval:80000, warnAt:8000, category:'Belts',         note:'A/C compressor & alternator' },
+  { id:'serpentine_belt',      name:'Serpentine Belt',          icon:'〰️', interval:100000, warnAt:1000, category:'Belts',         note:'Inspect at 100k, replace as needed. No timing belt — chain.' },
+  { id:'accessory_belt',       name:'Accessory Drive Belt',     icon:'〰️', interval:80000,  warnAt:1000, category:'Belts',         note:'A/C compressor & alternator' },
 
   // FUEL
-  { id:'fuel_filter',      name:'Fuel Filter',             icon:'⛽', interval:80000, warnAt:8000, category:'Fuel',          note:'Integrated in fuel pump — inspect at 80k' },
+  { id:'fuel_filter',          name:'Fuel Filter',              icon:'⛽', interval:80000,  warnAt:1000, category:'Fuel',          note:'Integrated in fuel pump — inspect at 80k' },
 
   // ELECTRICAL
-  { id:'battery',          name:'Battery Load Test',       icon:'🔋', interval:50000, warnAt:5000, category:'Electrical',    note:'2016 Outback batteries avg 4-5 years. ~130k km = test it.' },
+  { id:'battery',              name:'Battery Load Test',        icon:'🔋', interval:50000,  warnAt:1000, category:'Electrical',    note:'2016 Outback batteries avg 4-5 years. ~130k km = test it.' },
 
   // SUSPENSION
-  { id:'shocks_struts',    name:'Shocks & Struts',         icon:'🚗', interval:80000, warnAt:8000, category:'Suspension',    note:'Check for bounce, leaks, uneven wear' },
-  { id:'bushings',         name:'Suspension Bushings',     icon:'🔧', interval:80000, warnAt:8000, category:'Suspension',    note:'Listen for clunks on rough roads' },
+  { id:'shocks_struts',        name:'Shocks & Struts',          icon:'🚗', interval:80000,  warnAt:1000, category:'Suspension',    note:'Check for bounce, leaks, uneven wear' },
+  { id:'bushings',             name:'Suspension Bushings',      icon:'🔧', interval:80000,  warnAt:1000, category:'Suspension',    note:'Listen for clunks on rough roads' },
 
   // VISIBILITY
-  { id:'wiper_blades',     name:'Wiper Blades',            icon:'🌧️', interval:15000, warnAt:2000, category:'Visibility',    note:'Replace before winter in Ontario' },
-  { id:'headlights',       name:'Headlight Check',         icon:'💡', interval:20000, warnAt:2000, category:'Visibility',    note:'Check alignment & bulb condition' },
+  { id:'wiper_blades',         name:'Wiper Blades',             icon:'🌧️', interval:15000,  warnAt:1000, category:'Visibility',    note:'Replace before winter in Ontario' },
+  { id:'headlights',           name:'Headlight Check',          icon:'💡', interval:20000,  warnAt:1000, category:'Visibility',    note:'Check alignment & bulb condition' },
 
   // SUBARU-SPECIFIC
-  { id:'eyesight_calibration', name:'EyeSight Calibration',icon:'👁️', interval:0,     warnAt:0,    category:'Subaru-Specific',note:'Only if windshield replaced or collision — dealer only' },
-  { id:'head_gasket_check',name:'Head Gasket Inspection',  icon:'🔍', interval:30000, warnAt:5000, category:'Subaru-Specific',note:'Known Subaru concern — check for oil/coolant seepage' },
+  { id:'eyesight_calibration', name:'EyeSight Calibration',     icon:'👁️', interval:0,      warnAt:0,    category:'Subaru-Specific',note:'Only if windshield replaced or collision — dealer only' },
+  { id:'head_gasket_check',    name:'Head Gasket Inspection',   icon:'🔍', interval:30000,  warnAt:1000, category:'Subaru-Specific',note:'Known Subaru concern — check for oil/coolant seepage' },
 ];
 
 // ─── DIY INFO (all items) ────────────────────────────────
@@ -800,6 +813,8 @@ function renderCard(item) {
 
   const overrideBtn = item.interval > 0
     ? `<button class="override-btn" data-action="override" data-id="${item.id}">Set next km</button>` : '';
+  const skipBtn = item.interval > 0
+    ? `<button class="skip-btn" data-action="skip" data-id="${item.id}">Skip →</button>` : '';
 
   return `
     <div class="item-card status-${status === 'info' ? 'done' : status}">
@@ -813,29 +828,30 @@ function renderCard(item) {
         <span class="item-badge ${badgeClass}">${badge}</span>
         <button class="log-btn" data-action="log" data-id="${item.id}">Log ✓</button>
         ${overrideBtn}
+        ${skipBtn}
       </div>
     </div>`;
 }
 
 function renderAll() {
-  const overdue = ITEMS.filter(i => getStatus(i) === 'danger').length;
-  const soon    = ITEMS.filter(i => getStatus(i) === 'warn').length;
-  const ok      = ITEMS.filter(i => getStatus(i) === 'ok').length;
+  const SOON_KM = 1000;
+  const overdue = ITEMS.filter(i => i.interval > 0 && getNextDueKm(i) - state.currentKm <= 0).length;
+  const soon    = ITEMS.filter(i => i.interval > 0 && getNextDueKm(i) - state.currentKm > 0 && getNextDueKm(i) - state.currentKm <= SOON_KM).length;
+  const ok      = ITEMS.filter(i => i.interval > 0 && getNextDueKm(i) - state.currentKm > SOON_KM).length;
   document.getElementById('cnt-overdue').textContent = overdue;
   document.getElementById('cnt-soon').textContent    = soon;
   document.getElementById('cnt-ok').textContent      = ok;
-  // Show just the number — the <span>km</span> is already in the HTML
   document.getElementById('headerKm').innerHTML = Number(state.currentKm).toLocaleString('en-CA') + '<span>km</span>';
 
-  const urgentItems = ITEMS.filter(i => getStatus(i) === 'danger');
+  const urgentItems = ITEMS.filter(i => i.interval > 0 && getNextDueKm(i) - state.currentKm <= 0);
   document.getElementById('list-urgent').innerHTML = urgentItems.length
     ? urgentItems.map(renderCard).join('')
     : '<div class="empty">✅ Nothing overdue</div>';
 
-  const soonItems = ITEMS.filter(i => getStatus(i) === 'warn');
+  const soonItems = ITEMS.filter(i => i.interval > 0 && getNextDueKm(i) - state.currentKm > 0 && getNextDueKm(i) - state.currentKm <= SOON_KM);
   document.getElementById('list-soon').innerHTML = soonItems.length
     ? soonItems.map(renderCard).join('')
-    : '<div class="empty">Nothing due within 3,000 km</div>';
+    : '<div class="empty">Nothing due within 1,000 km</div>';
 
   const cats = [...new Set(ITEMS.map(i => i.category))];
   document.getElementById('list-all').innerHTML = cats.map(cat => {
@@ -997,7 +1013,19 @@ async function confirmOverride() {
   showToast(`Next due set to ${fmtKm(km)} ✓`, true);
 }
 
-// ─── DELETE HISTORY ENTRY ────────────────────────────────
+// ─── SKIP ITEM ───────────────────────────────────────────
+async function skipItem(itemId) {
+  const item = ITEMS.find(i => i.id === itemId);
+  const currentNext = getNextDueKm(item);
+  // Push next due forward by one full interval from wherever it currently sits
+  const newNext = (currentNext ?? state.currentKm) + item.interval;
+  snapshot();
+  if (!state.overrideNextKm) state.overrideNextKm = {};
+  state.overrideNextKm[itemId] = newNext;
+  await saveState();
+  renderAll();
+  showToast(`${item.name} skipped → next due at ${fmtKm(newNext)}`, true);
+}
 async function deleteHistoryEntry(index) {
   const entry = state.history[index];
   if (!entry) return;
@@ -1059,6 +1087,7 @@ document.body.addEventListener('click', e => {
   if (btn) {
     if (btn.dataset.action === 'log')            openLogModal(btn.dataset.id);
     if (btn.dataset.action === 'override')       openOverrideModal(btn.dataset.id);
+    if (btn.dataset.action === 'skip')           skipItem(btn.dataset.id);
     if (btn.dataset.action === 'delete-history') deleteHistoryEntry(parseInt(btn.dataset.index));
     return;
   }
